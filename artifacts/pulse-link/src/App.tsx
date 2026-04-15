@@ -7,15 +7,17 @@ import { useEffect } from "react";
 import AdminDashboard from "@/pages/admin";
 import FanInterface from "@/pages/fan";
 import FanAssistant from "@/pages/assistant";
+import HomePage from "@/pages/home";
 
 const queryClient = new QueryClient();
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={AdminDashboard} />
+      <Route path="/" component={HomePage} />
       <Route path="/fan" component={FanInterface} />
       <Route path="/fan/assistant" component={FanAssistant} />
+      <Route path="/admin" component={AdminDashboard} />
       <Route component={NotFound} />
     </Switch>
   );

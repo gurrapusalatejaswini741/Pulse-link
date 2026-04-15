@@ -83,10 +83,11 @@ export default function FanAssistant() {
             
             try {
               const parsed = JSON.parse(data);
-              if (parsed.text) {
+              const chunk = parsed.content ?? parsed.text ?? "";
+              if (chunk) {
                 setMessages(prev => prev.map(m => 
                   m.id === modelMsgId 
-                    ? { ...m, content: m.content + parsed.text }
+                    ? { ...m, content: m.content + chunk }
                     : m
                 ));
               }
