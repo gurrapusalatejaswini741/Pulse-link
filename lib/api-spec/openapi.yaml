@@ -3,13 +3,25 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Pulse-Link crowd management API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: crowd
+    description: Real-time crowd management
+  - name: fans
+    description: Fan attendee operations
+  - name: venues
+    description: Venue and zone operations
+  - name: notifications
+    description: Smart nudge notifications
+  - name: checkins
+    description: Biometric check-in operations
+  - name: gemini
+    description: Gemini AI chat and image operations
 paths:
   /healthz:
     get:
@@ -24,6 +36,411 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /crowd/state:
+    get:
+      operationId: getCrowdState
+      tags: [crowd]
+      summary: Get current crowd state for all zones
+      responses:
+        "200":
+          description: Current crowd state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CrowdState"
+
+  /crowd/simulate-halftime:
+    post:
+      operationId: simulateHalftime
+      tags: [crowd]
+      summary: Trigger halftime crowd surge simulation
+      responses:
+        "200":
+          description: Simulation triggered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SimulationResult"
+
+  /crowd/reset:
+    post:
+      operationId: resetCrowd
+      tags: [crowd]
+      summary: Reset crowd simulation to baseline
+      responses:
+        "200":
+          description: Reset successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SimulationResult"
+
+  /crowd/zones:
+    get:
+      operationId: listZones
+      tags: [crowd]
+      summary: Get all venue zones with current density
+      responses:
+        "200":
+          description: List of zones
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Zone"
+
+  /crowd/zones/{zoneId}:
+    get:
+      operationId: getZone
+      tags: [crowd]
+      summary: Get a specific zone
+      parameters:
+        - name: zoneId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Zone detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Zone"
+        "404":
+          description: Zone not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /crowd/bottlenecks:
+    get:
+      operationId: getBottlenecks
+      tags: [crowd]
+      summary: Get active bottleneck alerts
+      responses:
+        "200":
+          description: Active bottlenecks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Bottleneck"
+
+  /crowd/stats:
+    get:
+      operationId: getCrowdStats
+      tags: [crowd]
+      summary: Get aggregate crowd statistics
+      responses:
+        "200":
+          description: Crowd statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CrowdStats"
+
+  /fans:
+    get:
+      operationId: listFans
+      tags: [fans]
+      summary: List all fans
+      responses:
+        "200":
+          description: List of fans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Fan"
+    post:
+      operationId: createFan
+      tags: [fans]
+      summary: Register a new fan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFanBody"
+      responses:
+        "201":
+          description: Fan created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Fan"
+
+  /fans/{id}:
+    get:
+      operationId: getFan
+      tags: [fans]
+      summary: Get a fan by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Fan detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Fan"
+        "404":
+          description: Fan not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /fans/{id}/navigate:
+    get:
+      operationId: getFanNavigation
+      tags: [fans]
+      summary: Get optimal navigation path for a fan to a destination
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: destination
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Navigation path
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NavigationPath"
+
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [notifications]
+      summary: Get active notifications / nudges
+      responses:
+        "200":
+          description: List of notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+    post:
+      operationId: createNotification
+      tags: [notifications]
+      summary: Create a new notification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateNotificationBody"
+      responses:
+        "201":
+          description: Notification created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notification"
+
+  /notifications/{id}/dismiss:
+    post:
+      operationId: dismissNotification
+      tags: [notifications]
+      summary: Dismiss a notification
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Notification dismissed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notification"
+
+  /checkins:
+    get:
+      operationId: listCheckins
+      tags: [checkins]
+      summary: List recent check-ins
+      responses:
+        "200":
+          description: Recent check-ins
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Checkin"
+    post:
+      operationId: createCheckin
+      tags: [checkins]
+      summary: Simulate biometric check-in (Aura-Gate)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCheckinBody"
+      responses:
+        "201":
+          description: Check-in successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Checkin"
+
+  /venues:
+    get:
+      operationId: listVenues
+      tags: [venues]
+      summary: List all venues
+      responses:
+        "200":
+          description: List of venues
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Venue"
+
+  /gemini/conversations:
+    get:
+      operationId: listGeminiConversations
+      tags: [gemini]
+      summary: List all conversations
+      responses:
+        "200":
+          description: List of conversations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GeminiConversation"
+    post:
+      operationId: createGeminiConversation
+      tags: [gemini]
+      summary: Create a new conversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGeminiConversationBody"
+      responses:
+        "201":
+          description: Created conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeminiConversation"
+
+  /gemini/conversations/{id}:
+    get:
+      operationId: getGeminiConversation
+      tags: [gemini]
+      summary: Get conversation with messages
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Conversation with messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeminiConversationWithMessages"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeminiError"
+    delete:
+      operationId: deleteGeminiConversation
+      tags: [gemini]
+      summary: Delete a conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeminiError"
+
+  /gemini/conversations/{id}/messages:
+    get:
+      operationId: listGeminiMessages
+      tags: [gemini]
+      summary: List messages in a conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GeminiMessage"
+    post:
+      operationId: sendGeminiMessage
+      tags: [gemini]
+      summary: Send a message and receive an AI response (SSE stream)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendGeminiMessageBody"
+      responses:
+        "200":
+          description: SSE stream of assistant response chunks
+          content:
+            text/event-stream: {}
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +451,387 @@ components:
       required:
         - status
 
+    Zone:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        type:
+          type: string
+        gridRow:
+          type: integer
+        gridCol:
+          type: integer
+        capacity:
+          type: integer
+        currentCount:
+          type: integer
+        density:
+          type: number
+        isBottleneck:
+          type: boolean
+      required:
+        - id
+        - name
+        - type
+        - gridRow
+        - gridCol
+        - capacity
+        - currentCount
+        - density
+        - isBottleneck
+
+    Bottleneck:
+      type: object
+      properties:
+        id:
+          type: integer
+        zoneId:
+          type: integer
+        zoneName:
+          type: string
+        severity:
+          type: string
+        density:
+          type: number
+        detectedAt:
+          type: string
+          format: date-time
+        resolvedAt:
+          type: ["string", "null"]
+          format: date-time
+      required:
+        - id
+        - zoneId
+        - zoneName
+        - severity
+        - density
+        - detectedAt
+
+    CrowdState:
+      type: object
+      properties:
+        zones:
+          type: array
+          items:
+            $ref: "#/components/schemas/Zone"
+        totalFans:
+          type: integer
+        activeBottlenecks:
+          type: integer
+        simulationMode:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+      required:
+        - zones
+        - totalFans
+        - activeBottlenecks
+        - simulationMode
+        - timestamp
+
+    CrowdStats:
+      type: object
+      properties:
+        totalFans:
+          type: integer
+        checkedInFans:
+          type: integer
+        activeBottlenecks:
+          type: integer
+        averageDensity:
+          type: number
+        maxDensityZone:
+          type: string
+        simulationMode:
+          type: string
+      required:
+        - totalFans
+        - checkedInFans
+        - activeBottlenecks
+        - averageDensity
+        - maxDensityZone
+        - simulationMode
+
+    SimulationResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        mode:
+          type: string
+      required:
+        - success
+        - message
+        - mode
+
+    Fan:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        seatSection:
+          type: string
+        checkedIn:
+          type: boolean
+        currentZoneId:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - email
+        - seatSection
+        - checkedIn
+        - createdAt
+
+    CreateFanBody:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        seatSection:
+          type: string
+      required:
+        - name
+        - email
+        - seatSection
+
+    NavigationPath:
+      type: object
+      properties:
+        destination:
+          type: string
+        currentZone:
+          type: string
+        recommendedPath:
+          type: array
+          items:
+            type: string
+        estimatedMinutes:
+          type: integer
+        congestionLevel:
+          type: string
+        alternativeAvailable:
+          type: boolean
+        discountOffer:
+          type: ["string", "null"]
+      required:
+        - destination
+        - currentZone
+        - recommendedPath
+        - estimatedMinutes
+        - congestionLevel
+        - alternativeAvailable
+
+    Notification:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+        title:
+          type: string
+        message:
+          type: string
+        zoneId:
+          type: ["integer", "null"]
+        discountCode:
+          type: ["string", "null"]
+        discountPercent:
+          type: ["integer", "null"]
+        dismissed:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - type
+        - title
+        - message
+        - dismissed
+        - createdAt
+
+    CreateNotificationBody:
+      type: object
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        message:
+          type: string
+        zoneId:
+          type: ["integer", "null"]
+        discountCode:
+          type: ["string", "null"]
+        discountPercent:
+          type: ["integer", "null"]
+      required:
+        - type
+        - title
+        - message
+
+    Checkin:
+      type: object
+      properties:
+        id:
+          type: integer
+        fanId:
+          type: integer
+        fanName:
+          type: string
+        gateId:
+          type: integer
+        status:
+          type: string
+        verificationMethod:
+          type: string
+        checkedInAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - fanId
+        - fanName
+        - gateId
+        - status
+        - verificationMethod
+        - checkedInAt
+
+    CreateCheckinBody:
+      type: object
+      properties:
+        fanId:
+          type: integer
+        gateId:
+          type: integer
+        verificationMethod:
+          type: string
+      required:
+        - fanId
+        - gateId
+        - verificationMethod
+
+    Venue:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        totalCapacity:
+          type: integer
+        gridRows:
+          type: integer
+        gridCols:
+          type: integer
+      required:
+        - id
+        - name
+        - totalCapacity
+        - gridRows
+        - gridCols
+
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    GeminiConversation:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - createdAt
+
+    GeminiMessage:
+      type: object
+      properties:
+        id:
+          type: integer
+        conversationId:
+          type: integer
+        role:
+          type: string
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - conversationId
+        - role
+        - content
+        - createdAt
+
+    CreateGeminiConversationBody:
+      type: object
+      properties:
+        title:
+          type: string
+      required:
+        - title
+
+    SendGeminiMessageBody:
+      type: object
+      properties:
+        content:
+          type: string
+      required:
+        - content
+
+    GeminiConversationWithMessages:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/GeminiMessage"
+      required:
+        - id
+        - title
+        - createdAt
+        - messages
+
+    GeminiError:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error

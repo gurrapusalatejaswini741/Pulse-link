@@ -3,6 +3,7 @@ import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { startSimulation } from "./lib/crowd-engine";
 
 const app: Express = express();
 
@@ -30,5 +31,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
+
+startSimulation();
 
 export default app;

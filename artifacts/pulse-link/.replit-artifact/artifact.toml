@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Pulse-Link"
+version = "1.0.0"
+id = "artifacts/pulse-link"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23470
+
+[services.development]
+run = "pnpm --filter @workspace/pulse-link run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/pulse-link", "run", "build" ]
+publicDir = "artifacts/pulse-link/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23470"
+BASE_PATH = "/"
