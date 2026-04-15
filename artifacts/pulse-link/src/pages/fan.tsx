@@ -16,6 +16,234 @@ import {
 
 type Tab = "ticket" | "navigate" | "deals" | "assistant";
 
+// ─── Stadium coordinate map ──────────────────────────────────────────────────
+// Each location name maps to [x, y] on a 320×180 SVG canvas
+const WAYPOINT_COORDS: Record<string, [number, number]> = {
+  "Your Location":          [28,  138],
+  "Section A Entrance":     [28,  138],
+  "Gate 2 - North East":    [248,  22],
+  "Gate 3 - East":          [302,  90],
+  "Gate 4 - South East":    [248, 158],
+  "North Concessions":      [160,   8],
+  "South Concessions":      [160, 172],
+  "Section A Seating":      [95,   90],
+  "Section B Seating":      [225,  90],
+  "Main Restrooms":         [210, 162],
+  "VIP Lounge":             [75,   22],
+  "Medical Station":        [22,   72],
+  "Security Checkpoint 1":  [258,  55],
+  "Main Corridor":          [160,  90],
+};
+
+// Stadium map component
+function StadiumMap({
+  navPath,
+  destination,
+}: {
+  navPath?: { recommendedPath: string[]; congestionLevel: string } | null;
+  destination: string;
+}) {
+  const W = 320;
+  const H = 180;
+  const cx = 160;
+  const cy = 90;
+
+  // Build polyline points from recommendedPath
+  const routePoints: [number, number][] = [];
+  if (navPath?.recommendedPath) {
+    for (const stop of navPath.recommendedPath) {
+      const coord = WAYPOINT_COORDS[stop];
+      if (coord) routePoints.push(coord);
+    }
+  }
+  // Fallback: at least show start → dest
+  if (routePoints.length < 2) {
+    const destId = destination;
+    // Find best coordinate for selected destination
+    const destCoord =
+      WAYPOINT_COORDS[destId] ||
+      WAYPOINT_COORDS[destId.replace(" Seating", "")] ||
+      [300, 90] as [number, number];
+    routePoints.push([28, 138], destCoord);
+  }
+
+  const polylineStr = routePoints.map(([x, y]) => `${x},${y}`).join(" ");
+  const start = routePoints[0];
+  const end = routePoints[routePoints.length - 1];
+  const middle = routePoints.slice(1, -1);
+
+  return (
+    <div className="rounded-xl border border-white/10 overflow-hidden bg-[#050c1a]">
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        className="w-full block"
+        style={{ background: "#050c1a" }}
+      >
+        <defs>
+          <linearGradient id="routeGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#00BFFF" />
+            <stop offset="100%" stopColor="#00FF88" />
+          </linearGradient>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="2.5" result="blur" />
+            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
+          <filter id="softglow">
+            <feGaussianBlur stdDeviation="4" result="blur" />
+            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
+        </defs>
+
+        {/* ── Stadium outer ring ── */}
+        <ellipse cx={cx} cy={cy} rx={148} ry={84}
+          fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="14" />
+        <ellipse cx={cx} cy={cy} rx={148} ry={84}
+          fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
+
+        {/* ── Inner walkway ── */}
+        <ellipse cx={cx} cy={cy} rx={112} ry={64}
+          fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+
+        {/* ── Playing field ── */}
+        <rect x={106} y={56} width={108} height={68} rx={6}
+          fill="#062210" stroke="#00FF88" strokeWidth="0.8" strokeOpacity="0.3" />
+        {/* Centre circle */}
+        <circle cx={cx} cy={cy} r={16}
+          fill="none" stroke="#00FF88" strokeWidth="0.6" strokeOpacity="0.25" />
+        {/* Centre line */}
+        <line x1={cx} y1={58} x2={cx} y2={122}
+          stroke="#00FF88" strokeWidth="0.5" strokeOpacity="0.2" />
+        {/* Penalty areas */}
+        <rect x={106} y={69} width={22} height={42} rx={2}
+          fill="none" stroke="#00FF88" strokeWidth="0.5" strokeOpacity="0.15" />
+        <rect x={192} y={69} width={22} height={42} rx={2}
+          fill="none" stroke="#00FF88" strokeWidth="0.5" strokeOpacity="0.15" />
+
+        {/* ── Static labels for main zones ── */}
+        {[
+          { label: "N STAND", x: cx, y: 30 },
+          { label: "S STAND", x: cx, y: 163 },
+          { label: "W", x: 16, y: 93 },
+          { label: "E", x: 308, y: 93 },
+        ].map(({ label, x, y }) => (
+          <text key={label} x={x} y={y} textAnchor="middle"
+            fontSize="5.5" fill="rgba(255,255,255,0.15)" fontFamily="monospace" fontWeight="700"
+            letterSpacing="1">
+            {label}
+          </text>
+        ))}
+
+        {/* ── Gate markers (static dots at gate positions) ── */}
+        {(Object.entries(WAYPOINT_COORDS) as [string, [number, number]][])
+          .filter(([name]) => name.startsWith("Gate"))
+          .map(([name, [gx, gy]]) => (
+            <g key={name}>
+              <circle cx={gx} cy={gy} r={4}
+                fill="#1a2840" stroke="rgba(255,255,255,0.2)" strokeWidth="1" />
+              <text x={gx} y={gy - 6} textAnchor="middle"
+                fontSize="4.5" fill="rgba(255,255,255,0.3)" fontFamily="monospace">
+                {name.split(" - ")[0]}
+              </text>
+            </g>
+          ))}
+
+        {/* ── Route line ── */}
+        {routePoints.length >= 2 && (
+          <>
+            {/* Shadow / glow layer */}
+            <polyline
+              points={polylineStr}
+              fill="none"
+              stroke="#00BFFF"
+              strokeWidth="5"
+              strokeOpacity="0.12"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            {/* Main dashed route */}
+            <polyline
+              points={polylineStr}
+              fill="none"
+              stroke="url(#routeGrad)"
+              strokeWidth="2.5"
+              strokeDasharray="7 4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              filter="url(#glow)"
+            >
+              <animate
+                attributeName="stroke-dashoffset"
+                from="0"
+                to="-55"
+                dur="1.8s"
+                repeatCount="indefinite"
+              />
+            </polyline>
+          </>
+        )}
+
+        {/* ── Intermediate waypoint markers ── */}
+        {middle.map(([wx, wy], i) => (
+          <g key={i}>
+            <circle cx={wx} cy={wy} r={5}
+              fill="#0d1a2e" stroke="#00BFFF" strokeWidth="1.5" strokeOpacity="0.7" />
+            <circle cx={wx} cy={wy} r={2} fill="#00BFFF" opacity="0.8">
+              <animate attributeName="opacity" values="0.4;1;0.4"
+                dur="2s" repeatCount="indefinite" begin={`${i * 0.4}s`} />
+            </circle>
+          </g>
+        ))}
+
+        {/* ── YOU marker (pulsing beacon) ── */}
+        {start && (
+          <g>
+            {/* Pulse ring */}
+            <circle cx={start[0]} cy={start[1]} r={10}
+              fill="none" stroke="#00BFFF" strokeWidth="1.5" opacity="0.3">
+              <animate attributeName="r" values="8;18;8" dur="2s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0.5;0;0.5" dur="2s" repeatCount="indefinite" />
+            </circle>
+            <circle cx={start[0]} cy={start[1]} r={6}
+              fill="#00BFFF" stroke="white" strokeWidth="1.5" filter="url(#glow)" />
+            <circle cx={start[0]} cy={start[1]} r={2.5} fill="white" />
+            <text x={start[0]} y={start[1] - 12} textAnchor="middle"
+              fontSize="5.5" fill="#00BFFF" fontFamily="monospace" fontWeight="700">YOU</text>
+          </g>
+        )}
+
+        {/* ── DESTINATION marker ── */}
+        {end && !(end[0] === start[0] && end[1] === start[1]) && (
+          <g>
+            <circle cx={end[0]} cy={end[1]} r={8}
+              fill="#00FF88" fillOpacity="0.15" stroke="#00FF88" strokeWidth="1.5"
+              filter="url(#softglow)" />
+            <circle cx={end[0]} cy={end[1]} r={3.5} fill="#00FF88" filter="url(#glow)" />
+            {/* Pin spike */}
+            <line x1={end[0]} y1={end[1] + 3.5} x2={end[0]} y2={end[1] + 10}
+              stroke="#00FF88" strokeWidth="1.5" strokeOpacity="0.7" />
+            <text x={end[0]} y={end[1] - 12} textAnchor="middle"
+              fontSize="5.5" fill="#00FF88" fontFamily="monospace" fontWeight="700">DEST</text>
+          </g>
+        )}
+      </svg>
+
+      {/* Congestion badge */}
+      {navPath && (
+        <div className="border-t border-white/5 px-3 py-1.5 flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full animate-pulse"
+               style={{ background: navPath.congestionLevel === "low" ? "#00FF88" : navPath.congestionLevel === "high" ? "#ff4d4d" : "#f59e0b" }} />
+          <span className="text-[10px] uppercase tracking-widest text-gray-500">
+            Crowd: <span style={{ color: navPath.congestionLevel === "low" ? "#00FF88" : navPath.congestionLevel === "high" ? "#ff4d4d" : "#f59e0b" }}>
+              {navPath.congestionLevel}
+            </span>
+          </span>
+          <span className="text-[10px] text-gray-600 ml-auto">{routePoints.length - 1} stops</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const DESTINATIONS = [
   { id: "North Concessions", label: "North Concessions", emoji: "🍔" },
   { id: "South Concessions", label: "South Concessions", emoji: "🌮" },
@@ -304,115 +532,55 @@ export default function FanInterface() {
               ))}
             </div>
 
-            {/* Map */}
-            <div className="rounded-xl border border-white/10 overflow-hidden bg-[#050c1a]">
-              <div className="relative" style={{ aspectRatio: "16/9" }}>
-                {/* Grid background */}
-                <div className="absolute inset-0 opacity-10"
-                     style={{ backgroundImage: "linear-gradient(#1e293b 1px, transparent 1px), linear-gradient(90deg, #1e293b 1px, transparent 1px)", backgroundSize: "20px 20px" }} />
+            {/* Dynamic Stadium Map */}
+            <StadiumMap navPath={navPath} destination={destination} />
 
-                {/* Stadium outline */}
-                <div className="absolute inset-6 rounded-full border border-white/10 opacity-30" />
-                <div className="absolute inset-10 rounded-full border border-white/5 opacity-20" />
-
-                {/* Field */}
-                <div className="absolute inset-14 rounded-sm border border-[#00FF88]/20 opacity-40" />
-
-                {/* You marker */}
-                <div className="absolute bottom-12 left-8 flex flex-col items-center">
-                  <div className="w-5 h-5 rounded-full bg-[#00BFFF] shadow-[0_0_14px_#00BFFF] border-2 border-white relative z-10 flex items-center justify-center">
-                    <div className="w-2 h-2 rounded-full bg-white" />
-                  </div>
-                  <span className="text-[9px] text-[#00BFFF] font-black mt-1 uppercase">You</span>
+            {/* Route info bar */}
+            {navPath && (
+              <div className="rounded-xl border border-white/10 bg-[#050c1a] p-4 grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <Clock className="h-4 w-4 mx-auto mb-1" style={{ color: "#00BFFF" }} />
+                  <div className="text-lg font-black text-white">{navPath.estimatedMinutes}m</div>
+                  <div className="text-[10px] text-gray-500 uppercase">Est. Walk</div>
                 </div>
-
-                {/* Destination marker */}
-                <div className="absolute top-8 right-10 flex flex-col items-center">
-                  <MapPin className="h-5 w-5 text-[#00FF88]" style={{ filter: "drop-shadow(0 0 6px #00FF88)" }} />
-                  <span className="text-[9px] text-[#00FF88] font-black mt-0.5 uppercase">Dest</span>
-                </div>
-
-                {/* Route SVG */}
-                <svg className="absolute inset-0 w-full h-full pointer-events-none">
-                  <defs>
-                    <linearGradient id="routeGrad" x1="0%" y1="100%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="#00BFFF" />
-                      <stop offset="100%" stopColor="#00FF88" />
-                    </linearGradient>
-                  </defs>
-                  <path
-                    d="M 52 155 C 52 120, 100 110, 130 90 L 180 70 C 220 55, 270 45, 296 35"
-                    fill="none"
-                    stroke="url(#routeGrad)"
-                    strokeWidth="2.5"
-                    strokeDasharray="8 5"
-                    style={{ filter: "drop-shadow(0 0 4px #00BFFF)" }}
-                  >
-                    <animate attributeName="stroke-dashoffset" from="0" to="-100" dur="2s" repeatCount="indefinite" />
-                  </path>
-
-                  {/* Waypoint dots */}
-                  {[[130, 90], [180, 70]].map(([x, y], i) => (
-                    <circle key={i} cx={x} cy={y} r="3" fill="#00BFFF" opacity="0.6">
-                      <animate attributeName="opacity" values="0.3;0.9;0.3" dur="2s" repeatCount="indefinite" begin={`${i * 0.5}s`} />
-                    </circle>
-                  ))}
-                </svg>
-
-                {/* Congestion overlays */}
-                {navPath?.congestionLevel === "high" && (
-                  <div className="absolute top-2 left-2 flex items-center gap-1 bg-red-500/20 border border-red-500/40 rounded px-2 py-1">
-                    <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                    <span className="text-[9px] text-red-400 uppercase">High Traffic</span>
+                <div>
+                  <Users className="h-4 w-4 mx-auto mb-1" style={{ color: congestionColor }} />
+                  <div className="text-sm font-black capitalize" style={{ color: congestionColor }}>
+                    {navPath.congestionLevel}
                   </div>
-                )}
+                  <div className="text-[10px] text-gray-500 uppercase">Crowd</div>
+                </div>
+                <div>
+                  <Navigation className="h-4 w-4 mx-auto mb-1 text-gray-400" />
+                  <div className="text-sm font-black text-white">{navPath.recommendedPath.length - 1}</div>
+                  <div className="text-[10px] text-gray-500 uppercase">Waypoints</div>
+                </div>
               </div>
-
-              {/* Route info bar */}
-              {navPath && (
-                <div className="border-t border-white/10 p-4 grid grid-cols-3 gap-4 text-center">
-                  <div>
-                    <Clock className="h-4 w-4 mx-auto mb-1" style={{ color: "#00BFFF" }} />
-                    <div className="text-lg font-black text-white">{navPath.estimatedMinutes}m</div>
-                    <div className="text-[10px] text-gray-500 uppercase">Est. Walk</div>
-                  </div>
-                  <div>
-                    <Users className="h-4 w-4 mx-auto mb-1" style={{ color: congestionColor }} />
-                    <div className="text-sm font-black capitalize" style={{ color: congestionColor }}>
-                      {navPath.congestionLevel}
-                    </div>
-                    <div className="text-[10px] text-gray-500 uppercase">Crowd</div>
-                  </div>
-                  <div>
-                    <Navigation className="h-4 w-4 mx-auto mb-1 text-gray-400" />
-                    <div className="text-sm font-black text-white">{navPath.recommendedPath.length - 1}</div>
-                    <div className="text-[10px] text-gray-500 uppercase">Waypoints</div>
-                  </div>
-                </div>
-              )}
-            </div>
+            )}
 
             {/* Path steps */}
             {navPath?.recommendedPath && navPath.recommendedPath.length > 0 && (
               <div className="space-y-2">
-                <div className="text-xs text-gray-500 uppercase tracking-widest">Recommended Route</div>
-                <div className="space-y-2">
+                <div className="text-xs text-gray-500 uppercase tracking-widest">Turn-by-turn</div>
+                <div className="space-y-1">
                   {navPath.recommendedPath.map((step, i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <div className="flex flex-col items-center">
-                        <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black"
+                    <div key={i} className="flex items-start gap-3">
+                      <div className="flex flex-col items-center shrink-0 mt-0.5">
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shrink-0"
                              style={{
-                               background: i === 0 ? "#00BFFF" : i === navPath.recommendedPath.length - 1 ? "#00FF88" : "rgba(255,255,255,0.1)",
-                               color: i === 0 || i === navPath.recommendedPath.length - 1 ? "#0a0f1e" : "white",
+                               background: i === 0 ? "#00BFFF" : i === navPath.recommendedPath.length - 1 ? "#00FF88" : "rgba(255,255,255,0.12)",
+                               color: i === 0 || i === navPath.recommendedPath.length - 1 ? "#0a0f1e" : "rgba(255,255,255,0.7)",
                              }}>
                           {i + 1}
                         </div>
                         {i < navPath.recommendedPath.length - 1 && (
-                          <div className="w-px h-4 bg-white/10 mt-1" />
+                          <div className="w-px flex-1 min-h-[16px] mt-1" style={{ background: "rgba(255,255,255,0.08)" }} />
                         )}
                       </div>
-                      <div className={`text-sm ${i === 0 ? "text-[#00BFFF] font-bold" : i === navPath.recommendedPath.length - 1 ? "text-[#00FF88] font-bold" : "text-gray-300"}`}>
+                      <div className={`pb-3 text-sm leading-tight ${i === 0 ? "text-[#00BFFF] font-bold" : i === navPath.recommendedPath.length - 1 ? "text-[#00FF88] font-bold" : "text-gray-300"}`}>
                         {step}
+                        {i === 0 && <span className="block text-[10px] text-gray-600 font-normal mt-0.5">Your current position</span>}
+                        {i === navPath.recommendedPath.length - 1 && <span className="block text-[10px] text-[#00FF88]/60 font-normal mt-0.5">Destination</span>}
                       </div>
                     </div>
                   ))}
